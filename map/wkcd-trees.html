@@ -1251,17 +1251,19 @@
             try {
                 // Load tree data from GitHub Release asset URL (to bypass LFS pointer issue)
                 const treeResponse = await fetch('https://github.com/neolam1987/neolam1987.github.io/releases/download/v1.0/wkcd_tree.geojson', {
-                    mode: 'cors'  // Enable CORS to allow fetching from external domain
+                    mode: 'cors',  // Enable CORS
+                    credentials: 'omit',  // Avoid sending cookies/credentials
+                    cache: 'no-store'  // Bypass cache for fresh fetch
                 });
                 if (!treeResponse.ok) {
-                    throw new Error(`Failed to load tree data: ${treeResponse.statusText}`);
+                    throw new Error(`Failed to load tree data: ${treeResponse.status} - ${treeResponse.statusText}`);
                 }
                 treesData = await treeResponse.json();
 
                 // Load viewpoint data from external GeoJSON file
                 const viewpointResponse = await fetch('viewphoto.geojson');
                 if (!viewpointResponse.ok) {
-                    throw new Error(`Failed to load viewpoint data: ${viewpointResponse.statusText}`);
+                    throw new Error(`Failed to load viewpoint data: ${viewpointResponse.status} - ${viewpointResponse.statusText}`);
                 }
                 viewpointsData = await viewpointResponse.json();
 
@@ -1286,7 +1288,7 @@
                 }
             } catch (error) {
                 console.error('Error loading data:', error);
-                alert('Failed to load map data. Please check that the GeoJSON files are available.');
+                alert(`Failed to load map data: ${error.message}. Please check the console for details and ensure the GeoJSON files are available.`);
             }
         }
 

@@ -1256,11 +1256,10 @@
             // Convert CSV → GeoJSON-like object
             treesData = csvToGeoJSON(csvText);
 
-            // Species data stays the same
-            const speciesResponse = await fetch('map/species.json');
-            speciesData = await speciesResponse.json();
-
+            // Build species colors/shapes directly from CSV data
             processSpecies();
+
+            // Continue with your existing workflow
             loadTrees();
             updateStats();
         } catch (error) {
@@ -1283,6 +1282,7 @@
 
             const x = parseFloat(props["x"]);
             const y = parseFloat(props["y"]);
+            if (Number.isNaN(x) || Number.isNaN(y)) continue;
 
             features.push({
             type: "Feature",
@@ -1303,8 +1303,9 @@
             });
         }
 
-        return { type: "FeatureCollection", features: features };
+        return { type: "FeatureCollection", features };
         }
+
 
 
         // Generate a diverse color palette

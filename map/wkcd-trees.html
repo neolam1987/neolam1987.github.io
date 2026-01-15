@@ -1584,6 +1584,9 @@
 
         // Update statistics
         function updateStats() {
+            if (!treesData || !treesData.features) { 
+                console.warn("No tree data loaded"); r
+                eturn; }
             const speciesCount = {};
             treesData.features.forEach(feature => {
                 const species = feature.properties.botanical_name;

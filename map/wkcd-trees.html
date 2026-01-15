@@ -551,19 +551,26 @@
         let labelType = 'short';
         let legendNameType = 'short';
         let baseMaps = {
-            streets: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'),
-            satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'),
-            terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png')
+            streets: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 25 }),
+            satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 25 }),
+            terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 25 })
         };
         const CHUNK_SIZE = 10000;  // Process 10k trees per chunk to avoid UI freeze
 
+        // Initialize map
         function initMap() {
-            map = L.map('map', { zoomControl: false }).setView([22.4238, 114.2325], 18);  // Center on the provided coordinates
+            map = L.map('map', {
+                center: [22.2998, 114.1570],
+                zoom: 18,
+                maxZoom: 25,
+                minZoom: 10,
+                zoomControl: false
+            });
             baseMaps.streets.addTo(map);
 
             treeMarkers = L.layerGroup();
             clusterGroup = L.markerClusterGroup({
-                disableClusteringAtZoom: 18,  // Stop clustering at zoom level 18
+                disableClusteringAtZoom: 22,  // Stop clustering at zoom level 22 for more precise view
                 zoomToBoundsOnClick: true,   // Zoom to bounds when clicking a cluster
                 maxClusterRadius: 80
             });

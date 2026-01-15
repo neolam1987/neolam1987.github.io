@@ -1255,6 +1255,7 @@
 
             // Convert CSV → GeoJSON-like object
             treesData = csvToGeoJSON(csvText);
+            console.log('treesData loaded:', treesData.features.length);
 
             // Build species colors/shapes directly from CSV data
             processSpecies();
@@ -1593,20 +1594,7 @@
                 speciesCount[species] = (speciesCount[species] || 0) + 1;
             });
 
-            let html = `
-                <div class="stat-card">
-                    <div class="stat-value">${treesData.features.length}</div>
-                    <div class="stat-label">Total Trees</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${Object.keys(speciesCount).length}</div>
-                    <div class="stat-label">Species</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${viewpointsData.features.length}</div>
-                    <div class="stat-label">Photo Points</div>
-                </div>
-            `;
+            
 
             Object.entries(speciesCount).forEach(([species, count]) => {
                 html += `

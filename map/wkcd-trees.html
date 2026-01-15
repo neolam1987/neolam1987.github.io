@@ -494,7 +494,21 @@
 
             <div id="filtersTab" class="tab-content">
                 <div class="filter-section">
-                    <h4>Species</h4>
+                    <h4>Manage Selection</h4>
+                    <div class="action-buttons" style="margin-bottom: 15px;">
+                        <button class="btn btn-secondary" onclick="setAllSpecies(true)">Select All</button>
+                        <button class="btn btn-secondary" onclick="setAllSpecies(false)">Unselect All</button>
+                    </div>
+                    
+                    <div class="search-box" style="display: flex; gap: 5px;">
+                        <input type="text" id="speciesSearchInput" list="speciesList" placeholder="Type species name...">
+                        <datalist id="speciesList"></datalist>
+                        <button class="btn btn-primary" style="flex: 0;" onclick="addSpecificSpecies()">Add</button>
+                    </div>
+                    
+                    <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
+                    
+                    <h4>Species List</h4>
                     <div id="speciesFilters"></div>
                 </div>
             </div>
@@ -657,9 +671,19 @@
         function processSpecies() {
             const species = [...new Set(treesData.map(t => t.botanical_name))];
             const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
+            
+            // Clear and populate datalist for autocomplete
+            const datalist = document.getElementById('speciesList');
+            datalist.innerHTML = '';
+            
             species.forEach((sp, i) => {
                 speciesColors[sp] = colors[i % colors.length];
                 speciesShapes[sp] = speciesShapes[i % speciesShapes.length];
+                
+                // Add to autocomplete
+                const option = document.createElement('option');
+                option.value = sp;
+                datalist.appendChild(option);
             });
         }
 
@@ -757,6 +781,52 @@
                 clusterGroup.addLayer(marker);
             });
         }
+
+        
+        // Bulk selection (Async)
+        async function setAllSpecies(checked) {
+            const checkboxes = document.querySelectorAll('#speciesFilters input[type="checkbox"]');
+            
+            // Use a small delay/timeout to prevent UI lockup if the list is huge
+            for (const cb of checkboxes) {
+                cb.checked = checked;
+            }
+            
+            // Trigger marker update once after selection change
+            updateMarkers();
+        }
+
+        // Search and add specific species
+        function addSpecificSpecies() {
+            const input = document.getElementById('speciesSearchInput');
+            const val = input.value.trim();
+            
+            // Find matching species (case insensitive)
+            const match = Object.keys(speciesColors).find(sp => sp.toLowerCase() === val.toLowerCase());
+            
+            if (match) {
+                const id = `species_${match.replace(/[^a-zA-Z0-9]/g, '_')}`;
+                const checkbox = document.getElementById(id);
+                
+                if (checkbox) {
+                    checkbox.checked = true;
+                    updateMarkers();
+                    // Scroll the checkbox into view if needed
+                    checkbox.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    input.value = ''; // Clear input
+                }
+            } else {
+                alert("tree species no match");
+            }
+        }
+
+
+
+
+
+
+
+
 
         function searchTrees() {
             const query = document.getElementById('searchInput').value.toLowerCase();

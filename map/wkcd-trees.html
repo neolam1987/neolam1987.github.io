@@ -1250,7 +1250,7 @@
         async function loadData() {
         try {
             // Fetch CSV instead of GeoJSON
-            const treeResponse = await fetch('map/treei.csv');
+            const treeResponse = await fetch('treei.csv');
             const csvText = await treeResponse.text();
 
             // Convert CSV → GeoJSON-like object

@@ -9,6 +9,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <script src="https://unpkg.com/papaparse@latest/papaparse.min.js"></script>
     <style>
         * {
             margin: 0;
@@ -28,6 +29,19 @@
             width: 100%;
             height: 100%;
             z-index: 1;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.8);
+            padding: 20px;
+            border-radius: 8px;
+            z-index: 1001;
+            font-size: 16px;
+            color: #333;
         }
 
         /* Top Left Controls */
@@ -439,6 +453,7 @@
 </head>
 <body>
     <div id="map"></div>
+    <div id="loading">Loading trees...</div>
 
     <!-- Top Left Controls -->
     <div class="top-left-controls">
@@ -540,13 +555,18 @@
             satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'),
             terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png')
         };
+        const CHUNK_SIZE = 10000;  // Process 10k trees per chunk to avoid UI freeze
 
         function initMap() {
             map = L.map('map', { zoomControl: false }).setView([22.4238, 114.2325], 18);  // Center on the provided coordinates
             baseMaps.streets.addTo(map);
 
             treeMarkers = L.layerGroup();
-            clusterGroup = L.markerClusterGroup();
+            clusterGroup = L.markerClusterGroup({
+                disableClusteringAtZoom: 18,  // Stop clustering at zoom level 18
+                zoomToBoundsOnClick: true,   // Zoom to bounds when clicking a cluster
+                maxClusterRadius: 80
+            });
 
             drawnItems = L.featureGroup().addTo(map);
             new L.Control.Draw({
@@ -571,44 +591,60 @@
         }
 
         async function loadData() {
+            document.getElementById('loading').style.display = 'block';
             try {
-                const treeResponse = await fetch('treei.csv');
-                const csvText = await treeResponse.text();
-                treesData = csvToTrees(csvText);
-                processSpecies();
-                loadTrees();
-                updateStats();
-                updateSpeciesFilter();
-                updateSpeciesLegend();
+                const response = await fetch('treei.csv');
+                const csvText = await response.text();
+                Papa.parse(csvText, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        treesData = results.data.filter(tree => {
+                            const lng = parseFloat(tree.x);
+                            const lat = parseFloat(tree.y);
+                            return !isNaN(lng) && !isNaN(lat);
+                        }).map(tree => ({
+                            ...tree,
+                            lat: parseFloat(tree.y),
+                            lng: parseFloat(tree.x)
+                        }));
+                        processSpecies();
+                        addMarkersChunked(0);  // Start chunked marker addition
+                    }
+                });
             } catch (error) {
                 console.error('Error loading data:', error);
+                document.getElementById('loading').style.display = 'none';
             }
         }
 
-        function csvToTrees(csvText) {
-            const lines = csvText.trim().split("\n");
-            const headers = lines[0].split(",").map(h => h.trim());
-            const trees = [];
-
-            for (let i = 1; i < lines.length; i++) {
-                const row = lines[i].split(",");
-                if (row.length < headers.length) continue;
-
-                const tree = {};
-                headers.forEach((h, idx) => {
-                    tree[h] = row[idx] ? row[idx].trim() : "";
+        function addMarkersChunked(index) {
+            const end = Math.min(index + CHUNK_SIZE, treesData.length);
+            for (let i = index; i < end; i++) {
+                const tree = treesData[i];
+                const sp = tree.botanical_name;
+                const icon = L.divIcon({
+                    className: 'tree-marker',
+                    html: `<div class="species-color ${speciesShapes[sp] || 'circle'}" style="background: ${speciesColors[sp] || '#ff0000'};"></div>`,
+                    iconSize: [16, 16]
                 });
 
-                const lng = parseFloat(tree["x"]);
-                const lat = parseFloat(tree["y"]);
-                if (isNaN(lng) || isNaN(lat)) continue;
-
-                tree.lat = lat;
-                tree.lng = lng;
-                trees.push(tree);
+                const marker = L.marker([tree.lat, tree.lng], { icon });
+                marker.treeData = tree;
+                marker.on('click', showTreeDetails);
+                clusterGroup.addLayer(marker);
             }
 
-            return trees;
+            if (end < treesData.length) {
+                requestAnimationFrame(() => addMarkersChunked(end));  // Next chunk
+            } else {
+                map.addLayer(clusterGroup);
+                updateStats();
+                updateSpeciesFilter();
+                updateSpeciesLegend();
+                zoomToExtent();
+                document.getElementById('loading').style.display = 'none';
+            }
         }
 
         function processSpecies() {
@@ -618,25 +654,6 @@
                 speciesColors[sp] = colors[i % colors.length];
                 speciesShapes[sp] = speciesShapes[i % speciesShapes.length];
             });
-        }
-
-        function loadTrees() {
-            treesData.forEach(tree => {
-                const sp = tree.botanical_name;
-                const icon = L.divIcon({
-                    className: 'tree-marker',
-                    html: `<div class="species-color ${speciesShapes[sp]}" style="background: ${speciesColors[sp]};"></div>`,
-                    iconSize: [16, 16]
-                });
-
-                const marker = L.marker([tree.lat, tree.lng], { icon });
-                marker.treeData = tree;
-                marker.on('click', showTreeDetails);
-                treeMarkers.addLayer(marker);
-            });
-
-            clusterGroup.addLayer(treeMarkers);
-            map.addLayer(clusterGroup);
         }
 
         function showTreeDetails(e) {
@@ -654,7 +671,7 @@
         }
 
         function updateStats() {
-            if (!treesData || treesData.length === 0) {
+            if (treesData.length === 0) {
                 console.warn("No tree data loaded");
                 return;
             }
@@ -714,7 +731,7 @@
         }
 
         function updateMarkers() {
-            treeMarkers.clearLayers();
+            clusterGroup.clearLayers();
             const selectedSpecies = Object.keys(speciesColors).filter(sp => {
                 const id = `species_${sp.replace(/[^a-zA-Z0-9]/g, '_')}`;
                 return document.getElementById(id).checked;
@@ -730,7 +747,7 @@
                 const marker = L.marker([tree.lat, tree.lng], { icon });
                 marker.treeData = tree;
                 marker.on('click', showTreeDetails);
-                treeMarkers.addLayer(marker);
+                clusterGroup.addLayer(marker);
             });
         }
 
@@ -761,8 +778,8 @@
         function updateLabels() {
             labelType = document.getElementById('labelType').value;
             
-            treeMarkers.eachLayer(marker => {
-                if (labelsEnabled) {
+            clusterGroup.eachLayer(marker => {
+                if (labelsEnabled && marker.treeData) {  // Check for treeData to avoid clusters
                     const tree = marker.treeData;
                     let label = labelType === 'short' 
                         ? getShortScientificName(tree.botanical_name)

@@ -596,7 +596,7 @@
         async function loadData() {
             document.getElementById('loading').style.display = 'block';
             try {
-                const response = await fetch('treei.csv');
+                const response = await fetch('map/treei.csv');
                 const csvText = await response.text();
                 Papa.parse(csvText, {
                     header: true,

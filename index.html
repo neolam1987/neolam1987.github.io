@@ -191,6 +191,7 @@
             const speciesSet = new Set();
             treesData.forEach(t => {
                 speciesSet.add(t.botanical_name);
+                // Store Chinese name mapped to Botanical name for easy lookup
                 speciesChineseNames[t.botanical_name] = t.chinese_name || "Unknown";
             });
 
@@ -232,6 +233,7 @@
             }
         }
 
+        // MODIFIED PART: Label shows both, but data-sp and ID remain tied to Botanical name
         function updateSpeciesUI(sortedSpecies) {
             const container = document.getElementById('speciesFilters');
             container.innerHTML = sortedSpecies.map(sp => {
@@ -239,7 +241,7 @@
                 return `
                     <div class="filter-option">
                         <input type="checkbox" id="cb_${safeId}" data-sp="${sp}" checked onchange="filterMarkers()">
-                        <label for="cb_${safeId}" style="cursor:pointer; display:flex; align-items:center;">
+                        <label for="cb_${safeId}" style="cursor:pointer; display:flex; align-items:center; width: 100%;">
                             <span class="species-color" style="background:${speciesColors[sp]}"></span>
                             ${sp} (${speciesChineseNames[sp]})
                         </label>
@@ -278,14 +280,31 @@
             filterMarkers();
         }
 
+        // MODIFIED PART: Fixed Special Select to match Botanical names correctly
         function selectSpecialSpecies() {
+            // 1. Uncheck everything first
             document.querySelectorAll('#speciesFilters input').forEach(cb => cb.checked = false);
+            
+            let matchFound = false;
+
+            // 2. Loop through the special list from selection.csv
             specialSpeciesList.forEach(spName => {
+                // Generate the same safe ID used in the UI generation
                 const safeId = spName.replace(/[^a-z0-9]/gi, '_');
                 const cb = document.getElementById(`cb_${safeId}`);
-                if(cb) cb.checked = true;
+                
+                if (cb) {
+                    cb.checked = true;
+                    matchFound = true;
+                }
             });
+
+            // 3. Refresh markers and notify user if no matches
             filterMarkers();
+            
+            if (!matchFound) {
+                alert("No matches found. Check if selection.csv names match botanical_name in treei.csv exactly.");
+            }
         }
 
         function addSpecificSpecies() {

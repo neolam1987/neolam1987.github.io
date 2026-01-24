@@ -72,8 +72,16 @@
         </button>
         <button class="toggle-btn" onclick="toggleLayerSelector()"><i class="fas fa-layer-group"></i></button>
         <div class="control-group layer-selector collapsed" id="layerSelector" style="padding: 10px;">
-            <label style="display:block; font-size: 12px;"><input type="radio" name="base" checked onclick="changeBaseMap('streets')"> Streets</label>
-            <label style="display:block; font-size: 12px;"><input type="radio" name="base" onclick="changeBaseMap('satellite')"> Satellite</label>
+            <h4>Base Map</h4>
+            <label style="display:block; font-size: 12px; cursor: pointer; padding: 4px 0;">
+                <input type="radio" name="base" checked onclick="changeBaseMap('landsD')"> Lands Department
+            </label>
+            <label style="display:block; font-size: 12px; cursor: pointer; padding: 4px 0;">
+                <input type="radio" name="base" onclick="changeBaseMap('osm')"> OpenStreetMap
+            </label>
+            <label style="display:block; font-size: 12px; cursor: pointer; padding: 4px 0;">
+                <input type="radio" name="base" onclick="changeBaseMap('satellite')"> Satellite
+            </label>
         </div>
     </div>
 
@@ -128,16 +136,47 @@
         let userMarker = null;
         const CHUNK_SIZE = 5000;
 
+        // --- Map Layer Configuration ---
+        const landsdBasemapUrl = 'https://mapapi.geodata.gov.hk/gs/api/v1.0.0/xyz/basemap/WGS84/{z}/{x}/{y}.png';
+        const landsdLabelUrl = 'https://mapapi.geodata.gov.hk/gs/api/v1.0.0/xyz/label/hk/en/WGS84/{z}/{x}/{y}.png'; // 'en' for English, 'tc' for Traditional Chinese
+        const landsdAttribution = 'Map data &copy; <a href="https://www.landsd.gov.hk/">Lands Department</a>';
+
         const baseLayers = {
-            streets: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 20 }),
-            satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 20 })
+            // Layer 1: Lands Department Map + Labels (Default)
+            landsD: L.layerGroup([
+                L.tileLayer(landsdBasemapUrl, { 
+                    maxZoom: 20, 
+                    attribution: landsdAttribution 
+                }),
+                L.tileLayer(landsdLabelUrl, { 
+                    maxZoom: 20,
+                    zIndex: 10 // Ensures labels sit above the topographic base
+                })
+            ]),
+            // Layer 2: OpenStreetMap
+            osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                maxZoom: 19,
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            }),
+            // Layer 3: Satellite Imagery
+            satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+                maxZoom: 20,
+                attribution: 'Tiles &copy; Esri'
+            })
         };
 
         function initMap() {
-            map = L.map('map', { center: [22.3193, 114.1694], zoom: 13, zoomControl: false });
-            baseLayers.streets.addTo(map);
-            clusterGroup = L.markerClusterGroup({ disableClusteringAtZoom: 19 }).addTo(map);
+            // Initialize map with LandsD as default
+            map = L.map('map', { 
+                center: [22.3193, 114.1694], 
+                zoom: 13, 
+                zoomControl: false 
+            });
             
+            // Add default layer
+            baseLayers.landsD.addTo(map);
+            
+            clusterGroup = L.markerClusterGroup({ disableClusteringAtZoom: 19 }).addTo(map);
             loadData();
         }
 
@@ -350,7 +389,11 @@
             icon.className = content.classList.contains('collapsed') ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
         }
         function changeBaseMap(key) {
-            Object.values(baseLayers).forEach(l => map.removeLayer(l));
+            // Remove all current base layers
+            Object.values(baseLayers).forEach(l => {
+                if (map.hasLayer(l)) map.removeLayer(l);
+            });
+            // Add the selected layer
             baseLayers[key].addTo(map);
         }
         function switchTab(id) {
@@ -363,5 +406,4 @@
         window.onload = initMap;
     </script>
 </body>
-
 </html>

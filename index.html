@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HK Tree Map</title>
+    <title>HK Tree Map - Explorer</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
@@ -124,10 +124,39 @@
             cursor: pointer;
             font-size: 16px;
             border-radius: 4px;
+            box-shadow: 0 1px 5px rgba(0,0,0,0.4);
         }
 
         .toggle-btn:hover {
             background: #f4f4f4;
+        }
+
+        /* User Location Marker Styles */
+        .user-location-marker {
+            background: #4a90e2;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 12px;
+            height: 12px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+
+        .pulse {
+            border-radius: 50%;
+            height: 12px;
+            width: 12px;
+            position: absolute;
+            left: 0;
+            top: 0;
+            animation: pulsate 2s ease-out infinite;
+            opacity: 0;
+            box-shadow: 0 0 1px 2px #4a90e2;
+        }
+
+        @keyframes pulsate {
+            0% {transform: scale(0.1, 0.1); opacity: 0.0;}
+            50% {opacity: 1.0;}
+            100% {transform: scale(2.0, 2.0); opacity: 0.0;}
         }
 
         /* Bottom Left Panel */
@@ -251,23 +280,14 @@
             flex-shrink: 0;
         }
 
-        .species-color.circle {
-            border-radius: 50%;
-        }
-
-        .species-color.square {
-            transform: rotate(45deg);
-        }
-
+        .species-color.circle { border-radius: 50%; }
+        .species-color.square { transform: rotate(45deg); }
         .species-color.triangle {
-            width: 0;
-            height: 0;
-            border: none;
+            width: 0; height: 0; border: none;
             border-left: 8px solid transparent;
             border-right: 8px solid transparent;
             border-bottom: 14px solid;
-            box-shadow: none;
-            position: relative;
+            box-shadow: none; position: relative;
         }
 
         .stats-grid {
@@ -295,10 +315,6 @@
             margin-top: 4px;
         }
 
-        .tree-detail {
-            padding: 15px;
-        }
-
         .tree-detail h4 {
             font-size: 16px;
             margin-bottom: 12px;
@@ -315,9 +331,7 @@
             color: #555;
         }
 
-        .detail-value {
-            color: #333;
-        }
+        .detail-value { color: #333; }
 
         .action-buttons {
             display: flex;
@@ -335,26 +349,11 @@
             transition: opacity 0.2s;
         }
 
-        .btn:hover {
-            opacity: 0.8;
-        }
+        .btn:hover { opacity: 0.8; }
+        .btn-primary { background: #2c5f2d; color: white; }
+        .btn-secondary { background: #6c757d; color: white; }
 
-        .btn-primary {
-            background: #2c5f2d;
-            color: white;
-        }
-
-        .btn-secondary {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-        }
-
-        /* Bottom Right Legend - Now integrated into weather widget */
+        /* Legend */
         .legend {
             position: absolute;
             bottom: 10px;
@@ -367,11 +366,8 @@
             max-width: 250px;
         }
 
-        /* Hide standalone legend on mobile, show integrated version */
         @media (max-width: 768px) {
-            .legend {
-                display: none;
-            }
+            .legend { display: none; }
         }
 
         .legend h4 {
@@ -390,50 +386,12 @@
             font-size: 12px;
         }
 
-        .legend-item .species-color {
-            margin-right: 8px;
-        }
+        .legend-item .species-color { margin-right: 8px; }
 
         #legendContent {
             max-height: 60vh;
             overflow-y: auto;
             padding-right: 5px;
-        }
-
-        #legendContent::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        #legendContent::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 3px;
-        }
-
-        #legendContent::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 3px;
-        }
-
-        #legendContent::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
-
-        .weather-legend-content::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .weather-legend-content::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 3px;
-        }
-
-        .weather-legend-content::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 3px;
-        }
-
-        .weather-legend-content::-webkit-scrollbar-thumb:hover {
-            background: #555;
         }
 
         .legend-name-toggle {
@@ -453,16 +411,22 @@
 </head>
 <body>
     <div id="map"></div>
-    <div id="loading">Loading trees...</div>
+    <div id="loading">Loading trees and finding your location...</div>
 
-    <!-- Top Left Controls -->
     <div class="top-left-controls">
         <div class="control-group zoom-controls">
             <button onclick="map.zoomIn()">+</button>
             <button onclick="map.zoomOut()">-</button>
         </div>
 
-        <button class="toggle-btn" onclick="toggleLayerSelector()"><i class="fas fa-layer-group"></i></button>
+        <button class="toggle-btn" title="Center on my location" onclick="geolocate(true)">
+            <i class="fas fa-crosshairs"></i>
+        </button>
+
+        <button class="toggle-btn" onclick="toggleLayerSelector()">
+            <i class="fas fa-layer-group"></i>
+        </button>
+        
         <div class="control-group layer-selector collapsed" id="layerSelector">
             <h4>Base Map</h4>
             <label><input type="radio" name="baseMap" value="streets" checked onclick="changeBaseMap('streets')">Streets</label>
@@ -471,7 +435,6 @@
         </div>
     </div>
 
-    <!-- Bottom Left Main Panel -->
     <div class="main-panel">
         <div class="panel-header" onclick="togglePanel()">
             <h3>Tree Explorer</h3>
@@ -499,16 +462,6 @@
                         <button class="btn btn-secondary" onclick="setAllSpecies(true)">Select All</button>
                         <button class="btn btn-secondary" onclick="setAllSpecies(false)">Unselect All</button>
                     </div>
-                    
-                    <div class="search-box" style="display: flex; gap: 5px;">
-                        <input type="text" id="speciesSearchInput" list="speciesList" placeholder="Type species name...">
-                        <datalist id="speciesList"></datalist>
-                        <button class="btn btn-primary" style="flex: 0;" onclick="addSpecificSpecies()">Add</button>
-                    </div>
-                    
-                    <hr style="margin: 15px 0; border: 0; border-top: 1px solid #eee;">
-                    
-                    <h4>Species List</h4>
                     <div id="speciesFilters"></div>
                 </div>
             </div>
@@ -520,16 +473,12 @@
             <div id="toolsTab" class="tab-content">
                 <div class="action-buttons">
                     <button class="btn btn-primary" onclick="zoomToExtent()"><i class="fas fa-expand"></i> Fit all trees</button>
-                    <button class="btn btn-secondary" onclick="geolocate()"><i class="fas fa-location-arrow"></i> My location</button>
-                </div>
-                <div class="action-buttons" style="margin-top: 10px;">
-                    <button class="btn btn-primary" onclick="exportData('csv')"><i class="fas fa-download"></i> Export CSV</button>
+                    <button class="btn btn-secondary" onclick="geolocate(false)"><i class="fas fa-location-arrow"></i> My location</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Bottom Right Legend -->
     <div class="legend">
         <h4>Species Legend <i class="fas fa-chevron-down" onclick="toggleLegend()"></i></h4>
         <div id="legendContent"></div>
@@ -541,37 +490,22 @@
         </div>
     </div>
 
-    <!-- Weather Widget (Integrated Legend on Mobile) -->
-    <div id="weatherWidget" style="position: absolute; bottom: 10px; right: 10px; background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.3); z-index: 1000; display: none;">
-        <div id="weatherInfo"></div>
-        <h4>Species Legend <i id="weatherLegendToggleIcon" class="fas fa-chevron-down" onclick="toggleWeatherLegend()"></i></h4>
-        <div id="weatherLegendContent" class="weather-legend-content"></div>
-        <div class="legend-name-toggle">
-            <select id="weatherLegendNameType" onchange="updateWeatherLegendNames()">
-                <option value="short">Short Scientific Name</option>
-                <option value="chinese">Chinese Name</option>
-            </select>
-        </div>
-    </div>
-
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
     <script>
         let map, treeMarkers, clusterGroup, treesData = [];
+        let userMarker = null;
         let speciesColors = {}, speciesShapes = ['circle', 'square', 'triangle'];
-        let currentBaseMap = 'streets';
-        let labelsEnabled = false;
-        let labelType = 'short';
         let legendNameType = 'short';
+        
         let baseMaps = {
             streets: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 25 }),
             satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 25 }),
             terrain: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 25 })
         };
-        const CHUNK_SIZE = 10000;  // Process 10k trees per chunk to avoid UI freeze
+        const CHUNK_SIZE = 5000;
 
-        // Initialize map
         function initMap() {
             map = L.map('map', {
                 center: [22.2998, 114.1570],
@@ -584,17 +518,15 @@
 
             treeMarkers = L.layerGroup();
             clusterGroup = L.markerClusterGroup({
-                disableClusteringAtZoom: 19,  // Stop clustering at zoom level 19 for more precise view
-                zoomToBoundsOnClick: true,   // Zoom to bounds when clicking a cluster
+                disableClusteringAtZoom: 19,
+                zoomToBoundsOnClick: true,
                 maxClusterRadius: 80
             });
 
             loadData();
-            loadWeather();
         }
 
         async function loadData() {
-            document.getElementById('loading').style.display = 'block';
             try {
                 const response = await fetch('map/treei.csv');
                 const csvText = await response.text();
@@ -612,7 +544,7 @@
                             lng: parseFloat(tree.x)
                         }));
                         processSpecies();
-                        addMarkersChunked(0);  // Start chunked marker addition
+                        addMarkersChunked(0);
                     }
                 });
             } catch (error) {
@@ -639,123 +571,100 @@
             }
 
             if (end < treesData.length) {
-                requestAnimationFrame(() => addMarkersChunked(end));  // Next chunk
+                requestAnimationFrame(() => addMarkersChunked(end));
             } else {
                 map.addLayer(clusterGroup);
                 updateStats();
                 updateSpeciesFilter();
                 updateSpeciesLegend();
-                zoomToExtent();
+                
+                // DATA LOADED: Now find the user
+                geolocate(false); 
                 document.getElementById('loading').style.display = 'none';
             }
         }
 
+        function geolocate(keepZoom = false) {
+            if (!navigator.geolocation) {
+                alert('Geolocation not supported');
+                return;
+            }
+
+            const options = {
+                enableHighAccuracy: true,
+                timeout: 8000,
+                maximumAge: 0
+            };
+
+            navigator.geolocation.getCurrentPosition(position => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const currentZoom = keepZoom ? map.getZoom() : 18;
+
+                if (userMarker) map.removeLayer(userMarker);
+
+                const userIcon = L.divIcon({
+                    className: 'user-location-parent',
+                    html: '<div class="user-location-marker"></div><div class="pulse"></div>',
+                    iconSize: [12, 12]
+                });
+
+                userMarker = L.marker([lat, lng], { icon: userIcon }).addTo(map)
+                    .bindPopup('You are here');
+
+                map.setView([lat, lng], currentZoom);
+
+            }, error => {
+                console.warn(`Geolocation error: ${error.message}`);
+                if (!keepZoom) zoomToExtent(); // Fallback if location fails
+            }, options);
+        }
+
         function processSpecies() {
             const species = [...new Set(treesData.map(t => t.botanical_name))];
-            const colors = ['#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'];
-            
-            // Clear and populate datalist for autocomplete
-            const datalist = document.getElementById('speciesList');
-            datalist.innerHTML = '';
-            
+            const colors = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6'];
             species.forEach((sp, i) => {
                 speciesColors[sp] = colors[i % colors.length];
                 speciesShapes[sp] = speciesShapes[i % speciesShapes.length];
-                
-                // Add to autocomplete
-                const option = document.createElement('option');
-                option.value = sp;
-                datalist.appendChild(option);
             });
         }
 
         function showTreeDetails(e) {
             const tree = e.target.treeData;
             let html = `
-                <h4>${tree.botanical_name}</h4>
-                <div class="detail-row"><span class="detail-label">Chinese Name:</span> <span class="detail-value">${tree.chinese_name}</span></div>
-                <div class="detail-row"><span class="detail-label">ID:</span> <span class="detail-value">${tree.fid}</span></div>
-                <div class="detail-row"><span class="detail-label">Remarks:</span> <span class="detail-value">${tree.remarks || 'None'}</span></div>
-                <div class="detail-row"><span class="detail-label">DBH:</span> <span class="detail-value">${tree.DBH || 'N/A'}</span></div>
-                <div class="detail-row"><span class="detail-label">Crown Spread:</span> <span class="detail-value">${tree['Crown Spread'] || 'N/A'}</span></div>
-                <div class="detail-row"><span class="detail-label">Tree Height:</span> <span class="detail-value">${tree['Tree Height'] || 'N/A'}</span></div>
+                <div class="tree-detail">
+                    <h4>${tree.botanical_name}</h4>
+                    <div class="detail-row"><span class="detail-label">Chinese:</span> ${tree.chinese_name}</div>
+                    <div class="detail-row"><span class="detail-label">ID:</span> ${tree.fid}</div>
+                    <div class="detail-row"><span class="detail-label">Remarks:</span> ${tree.remarks || 'None'}</div>
+                </div>
             `;
             L.popup().setLatLng(e.latlng).setContent(html).openOn(map);
         }
 
         function updateStats() {
-            if (treesData.length === 0) {
-                console.warn("No tree data loaded");
-                return;
-            }
-
-            const speciesCount = {};
-            treesData.forEach(t => {
-                speciesCount[t.botanical_name] = (speciesCount[t.botanical_name] || 0) + 1;
-            });
-
-            let html = `
-                <div class="stat-card">
-                    <div class="stat-value">${treesData.length}</div>
-                    <div class="stat-label">Total Trees</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${Object.keys(speciesCount).length}</div>
-                    <div class="stat-label">Species</div>
-                </div>
+            const speciesCount = [...new Set(treesData.map(t => t.botanical_name))].length;
+            document.getElementById('statsGrid').innerHTML = `
+                <div class="stat-card"><div class="stat-value">${treesData.length}</div><div class="stat-label">Trees</div></div>
+                <div class="stat-card"><div class="stat-value">${speciesCount}</div><div class="stat-label">Species</div></div>
             `;
-            document.getElementById('statsGrid').innerHTML = html;
         }
 
         function updateSpeciesFilter() {
             let html = '';
-            
-            // 1. Create a list of species objects containing both names
-            const speciesList = Object.keys(speciesColors).map(botanical => {
-                const treeEntry = treesData.find(t => t.botanical_name === botanical);
-                return {
-                    botanical: botanical,
-                    chinese: treeEntry ? treeEntry.chinese_name : ''
-                };
-            });
-
-            // 2. Sort alphabetically by Botanical Name
-            speciesList.sort((a, b) => a.botanical.localeCompare(b.botanical));
-
-            // 3. Generate HTML
-            speciesList.forEach(item => {
-                const sp = item.botanical;
+            Object.keys(speciesColors).sort().forEach(sp => {
                 const id = `species_${sp.replace(/[^a-zA-Z0-9]/g, '_')}`;
                 html += `
                     <div class="filter-option">
                         <input type="checkbox" id="${id}" checked onchange="updateMarkers()">
                         <label for="${id}">
                             <span class="species-color ${speciesShapes[sp]}" style="background: ${speciesColors[sp]};"></span>
-                            ${sp} (${item.chinese})
+                            ${sp}
                         </label>
                     </div>
                 `;
             });
             document.getElementById('speciesFilters').innerHTML = html;
-        }
-
-        function updateSpeciesLegend() {
-            let html = '';
-            Object.keys(speciesColors).forEach(sp => {
-                const name = legendNameType === 'short' ? getShortScientificName(sp) : treesData.find(t => t.botanical_name === sp).chinese_name;
-                html += `
-                    <div class="legend-item">
-                        <span class="species-color ${speciesShapes[sp]}" style="background: ${speciesColors[sp]};"></span>
-                        ${name}
-                    </div>
-                `;
-            });
-            document.getElementById('legendContent').innerHTML = html;
-        }
-
-        function getShortScientificName(name) {
-            const parts = name.split(' ');
-            return parts.length > 1 ? `${parts[0][0]}. ${parts[1]}` : name;
         }
 
         function updateMarkers() {
@@ -779,151 +688,41 @@
             });
         }
 
-        
-        // Bulk selection (Async)
-        async function setAllSpecies(checked) {
-            const checkboxes = document.querySelectorAll('#speciesFilters input[type="checkbox"]');
-            
-            // Update UI state
-            checkboxes.forEach(cb => cb.checked = checked);
-            
-            // Update markers (Wrapped in timeout to allow UI to update checkbox visuals first)
-            setTimeout(() => {
-                updateMarkers();
-            }, 10);
+        function setAllSpecies(checked) {
+            document.querySelectorAll('#speciesFilters input[type="checkbox"]').forEach(cb => cb.checked = checked);
+            updateMarkers();
         }
-
-        // Search and add specific species
-        function addSpecificSpecies() {
-            const input = document.getElementById('speciesSearchInput');
-            const val = input.value.trim();
-            
-            // Find matching species (case insensitive)
-            const match = Object.keys(speciesColors).find(sp => sp.toLowerCase() === val.toLowerCase());
-            
-            if (match) {
-                const id = `species_${match.replace(/[^a-zA-Z0-9]/g, '_')}`;
-                const checkbox = document.getElementById(id);
-                
-                if (checkbox) {
-                    checkbox.checked = true;
-                    updateMarkers();
-                    // Scroll the checkbox into view if needed
-                    checkbox.parentElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    input.value = ''; // Clear input
-                }
-            } else {
-                alert("tree species no match");
-            }
-        }
-
-        
-        function toggleLayerSelector() {
-            const selector = document.getElementById('layerSelector');
-            selector.classList.toggle('collapsed');
-        }
-
-
-
-
-
-
 
         function searchTrees() {
             const query = document.getElementById('searchInput').value.toLowerCase();
             let results = '';
-            treesData.filter(t => t.botanical_name.toLowerCase().includes(query) || t.fid.toString().includes(query)).forEach(tree => {
-                results += `<div onclick="map.setView([${tree.lat}, ${tree.lng}], 18)">${tree.botanical_name} (ID: ${tree.fid})</div>`;
+            treesData.filter(t => t.botanical_name.toLowerCase().includes(query) || t.fid.toString().includes(query))
+                     .slice(0, 10).forEach(tree => {
+                results += `<div style="padding:5px; cursor:pointer; border-bottom:1px solid #eee" onclick="map.setView([${tree.lat}, ${tree.lng}], 19)">${tree.botanical_name} (ID: ${tree.fid})</div>`;
             });
             document.getElementById('searchResults').innerHTML = results || 'No results';
         }
 
-        function toggleClustering() {
-            if (document.getElementById('clustering').checked) {
-                map.removeLayer(treeMarkers);
-                map.addLayer(clusterGroup);
-            } else {
-                map.removeLayer(clusterGroup);
-                map.addLayer(treeMarkers);
-            }
-        }
-
-        function toggleLabels() {
-            labelsEnabled = document.getElementById('showLabels').checked;
-            updateLabels();
-        }
-
-        function updateLabels() {
-            labelType = document.getElementById('labelType').value;
-            
-            clusterGroup.eachLayer(marker => {
-                if (labelsEnabled && marker.treeData) {  // Check for treeData to avoid clusters
-                    const tree = marker.treeData;
-                    let label = labelType === 'short' 
-                        ? getShortScientificName(tree.botanical_name)
-                        : tree.chinese_name;
-                    
-                    marker.bindTooltip(label, { 
-                        permanent: true, 
-                        direction: 'top',
-                        className: 'tree-label',
-                        offset: [0, -10]
-                    });
-                } else {
-                    marker.unbindTooltip();
-                }
-            });
-        }
-
-        function togglePanel() {
+        function toggleLayerSelector() { document.getElementById('layerSelector').classList.toggle('collapsed'); }
+        function togglePanel() { 
             const content = document.getElementById('panelContent');
-            const icon = document.getElementById('panelToggleIcon');
-            
-            if (content.style.display === 'none') {
-                content.style.display = 'block';
-                icon.className = 'fas fa-chevron-down';
-            } else {
-                content.style.display = 'none';
-                icon.className = 'fas fa-chevron-up';
-            }
+            content.style.display = content.style.display === 'none' ? 'block' : 'none';
         }
-
         function toggleLegend() {
             const content = document.getElementById('legendContent');
-            if (content.style.display === 'none') {
-                content.style.display = 'block';
-            } else {
-                content.style.display = 'none';
-            }
-        }
-
-        function updateWeatherLegendNames() {
-            legendNameType = document.getElementById('weatherLegendNameType').value;
-            const desktopSelector = document.getElementById('legendNameType');
-            if (desktopSelector) {
-                desktopSelector.value = legendNameType;
-            }
-            updateSpeciesLegend();
+            content.style.display = content.style.display === 'none' ? 'block' : 'none';
         }
 
         function switchTab(tabName) {
-            const tabs = document.querySelectorAll('.tab');
-            const contents = document.querySelectorAll('.tab-content');
-            
-            tabs.forEach(tab => tab.classList.remove('active'));
-            contents.forEach(content => content.classList.remove('active'));
-            
-            document.querySelector(`.tab:nth-child(${
-                tabName === 'search' ? 1 : tabName === 'filters' ? 2 : tabName === 'stats' ? 3 : 4
-            })`).classList.add('active');
-            
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.target.classList.add('active');
             document.getElementById(tabName + 'Tab').classList.add('active');
         }
 
         function changeBaseMap(type) {
             Object.values(baseMaps).forEach(layer => map.removeLayer(layer));
             baseMaps[type].addTo(map);
-            currentBaseMap = type;
         }
 
         function zoomToExtent() {
@@ -932,61 +731,23 @@
             map.fitBounds(bounds, { padding: [50, 50] });
         }
 
-        function geolocate() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(position => {
-                    map.setView([position.coords.latitude, position.coords.longitude], 18);
-                    L.marker([position.coords.latitude, position.coords.longitude], {
-                        icon: L.divIcon({
-                            className: 'user-location',
-                            html: '<i class="fas fa-circle" style="color: #4a90e2; font-size: 12px;"></i>',
-                            iconSize: [12, 12]
-                        })
-                    }).addTo(map).bindPopup('Your location');
-                }, error => {
-                    alert('Unable to get your location');
-                });
-            } else {
-                alert('Geolocation not supported');
-            }
-        }
-
-        function exportData(format) {
-            const speciesChecked = Object.keys(speciesColors).filter(sp => {
-                const id = `species_${sp.replace(/[^a-zA-Z0-9]/g, '_')}`;
-                const checkbox = document.getElementById(id);
-                return checkbox && checkbox.checked;
+        function updateSpeciesLegend() {
+            let html = '';
+            const type = document.getElementById('legendNameType').value;
+            Object.keys(speciesColors).forEach(sp => {
+                const treeEntry = treesData.find(t => t.botanical_name === sp);
+                const name = type === 'short' ? (sp.split(' ').length > 1 ? `${sp[0]}. ${sp.split(' ')[1]}` : sp) : treeEntry.chinese_name;
+                html += `
+                    <div class="legend-item">
+                        <span class="species-color ${speciesShapes[sp]}" style="background: ${speciesColors[sp]};"></span>
+                        ${name}
+                    </div>
+                `;
             });
-            
-            const filteredTrees = treesData.filter(t => speciesChecked.includes(t.botanical_name));
-
-            if (format === 'csv') {
-                let csv = 'botanical_name,chinese_name,fid,remarks,x,y\n';
-                filteredTrees.forEach(t => {
-                    csv += `${t.botanical_name},"${t.chinese_name}",${t.fid},"${t.remarks || ''}",${t.lng},${t.lat}\n`;
-                });
-                
-                downloadFile(csv, 'trees.csv', 'text/csv');
-            }
+            document.getElementById('legendContent').innerHTML = html;
         }
 
-        function downloadFile(content, filename, type) {
-            const blob = new Blob([content], { type });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = filename;
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        function loadWeather() {
-            // Mock weather data
-            document.getElementById('weatherInfo').innerHTML = '24°C, Partly Cloudy';
-        }
-
-        window.addEventListener('load', initMap);
+        window.onload = initMap;
     </script>
 </body>
-
 </html>

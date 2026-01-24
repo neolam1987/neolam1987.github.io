@@ -161,7 +161,7 @@
                 const treeRes = await fetch('map/treei.csv');
                 const treeText = await treeRes.text();
                 
-                const specialRes = await fetch('asset/selection.csv');
+                const specialRes = await fetch('map/selection.csv');
                 if(specialRes.ok) {
                     const specialText = await specialRes.text();
                     Papa.parse(specialText, {
@@ -373,4 +373,5 @@
         window.onload = initMap;
     </script>
 </body>
+
 </html>

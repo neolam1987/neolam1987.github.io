@@ -188,18 +188,7 @@
                 maxZoom: 20, attribution: 'Tiles &copy; Esri' 
             })
         };
-
-        function initMap() {
-            map = L.map('map', { center: [22.3193, 114.1694], zoom: 13, zoomControl: false });
-            baseLayers.landsD.addTo(map);
-            clusterGroup = L.markerClusterGroup({ disableClusteringAtZoom: 19 }).addTo(map);
-            
-            setupZoomListener(); // Now defined, this will no longer crash
-            initOrientation();   
-            loadData();
-        }
-
-
+        
         // MODIFIED PART: Added missing setupZoomListener function
         function setupZoomListener() {
             map.on('zoomend', () => {
@@ -213,6 +202,19 @@
                 }
             });
         }
+        
+        function initMap() {
+            map = L.map('map', { center: [22.3193, 114.1694], zoom: 13, zoomControl: false });
+            baseLayers.landsD.addTo(map);
+            clusterGroup = L.markerClusterGroup({ disableClusteringAtZoom: 19 }).addTo(map);
+            
+            setupZoomListener(); // Now defined, this will no longer crash
+            initOrientation();   
+            loadData();
+        }
+
+
+        
 
 
         async function loadData() {
@@ -464,4 +466,5 @@
         window.onload = initMap;
     </script>
 </body>
+
 </html>

@@ -63,18 +63,25 @@
         }
 
         /* The Fan Shape (Field of View) */
+        /* Hide the fan by default */
         .user-fov-fan {
+            display: none;
             position: absolute;
             width: 0;
             height: 0;
             border-left: 40px solid transparent;
             border-right: 40px solid transparent;
-            border-top: 80px solid rgba(44, 95, 45, 0.3); /* Match your theme green with transparency */
+            border-top: 80px solid rgba(44, 95, 45, 0.4); 
             border-radius: 50% 50% 0 0;
-            top: -80px; /* Offset so the point sits on the user dot */
+            top: -80px;
             transform-origin: bottom center;
             pointer-events: none;
             z-index: -1;
+        }
+
+        /* Only display fan when map-zoom-high class is present */
+        .map-zoom-high .user-fov-fan {
+            display: block;
         }
 
         .user-location-marker {
@@ -184,8 +191,11 @@
 
         function initMap() {
             map = L.map('map', { center: [22.3193, 114.1694], zoom: 13, zoomControl: false });
-            baseLayers.landsD.addTo(map); // Default
+            baseLayers.landsD.addTo(map);
             clusterGroup = L.markerClusterGroup({ disableClusteringAtZoom: 19 }).addTo(map);
+            
+            setupZoomListener(); // Track zoom for fan visibility
+            initOrientation();  // Start tracking orientation immediately
             loadData();
         }
 
@@ -368,46 +378,36 @@
 
         let currentHeading = 0;
 
-        // Request orientation and start listener
+        // Initialize orientation automatically on load
         async function initOrientation() {
-            // Check for iOS 13+ permission requirement
-            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
-                try {
-                    const permission = await DeviceOrientationEvent.requestPermission();
-                    if (permission === 'granted') {
-                        window.addEventListener('deviceorientation', handleOrientation, true);
-                    }
-                } catch (error) {
-                    console.error("Orientation permission denied:", error);
-                }
+            if (typeof DeviceOrientationEvent !== 'undefined' && 
+                typeof DeviceOrientationEvent.requestPermission === 'function') {
+                // iOS requires a click, so we'll try to catch it on the first map click
+                document.body.addEventListener('click', async () => {
+                    try {
+                        const permission = await DeviceOrientationEvent.requestPermission();
+                        if (permission === 'granted') {
+                            window.addEventListener('deviceorientation', handleOrientation, true);
+                        }
+                    } catch (e) { console.error("Orientation error:", e); }
+                }, { once: true });
             } else {
-                // Non-iOS or older browsers
+                // Android and others
                 window.addEventListener('deviceorientation', handleOrientation, true);
             }
         }
 
         function handleOrientation(event) {
-            // compass heading (absolute or webkit)
             currentHeading = event.webkitCompassHeading || (360 - event.alpha);
-            
-            if (userMarker) {
-                const fan = document.querySelector('.user-fov-fan');
-                if (fan) {
-                    fan.style.transform = `rotate(${currentHeading}deg)`;
-                }
-            }
+            const fan = document.querySelector('.user-fov-fan');
+            if (fan) fan.style.transform = `rotate(${currentHeading}deg)`;
         }
 
         function geolocate(isManual) {
-            // If user clicks recenter, request orientation permission (Required for iOS)
-            if (isManual) initOrientation();
-
             navigator.geolocation.getCurrentPosition(pos => {
                 const { latitude, longitude } = pos.coords;
-                
                 if (userMarker) map.removeLayer(userMarker);
 
-                // Custom HTML for the marker including the Fan and the Dot
                 const userIcon = L.divIcon({
                     className: 'user-location-parent',
                     html: `
@@ -419,11 +419,8 @@
                 });
 
                 userMarker = L.marker([latitude, longitude], { icon: userIcon, zIndexOffset: 1000 }).addTo(map);
-
-                if (isManual) {
-                    map.setView([latitude, longitude], 19); // Zoom in closer to see specific trees
-                }
-            }, err => console.warn(err), { enableHighAccuracy: true });
+                if (isManual) map.setView([latitude, longitude], 19);
+            }, null, { enableHighAccuracy: true });
         }
 
         function toggleLayerSelector() { document.getElementById('layerSelector').classList.toggle('collapsed'); }

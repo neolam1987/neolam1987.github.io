@@ -194,10 +194,26 @@
             baseLayers.landsD.addTo(map);
             clusterGroup = L.markerClusterGroup({ disableClusteringAtZoom: 19 }).addTo(map);
             
-            setupZoomListener(); // Track zoom for fan visibility
-            initOrientation();  // Start tracking orientation immediately
+            setupZoomListener(); // Now defined, this will no longer crash
+            initOrientation();   
             loadData();
         }
+
+
+        // MODIFIED PART: Added missing setupZoomListener function
+        function setupZoomListener() {
+            map.on('zoomend', () => {
+                const zoom = map.getZoom();
+                const mapContainer = document.getElementById('map');
+                // Show the orientation fan only at zoom level 19 or higher
+                if (zoom >= 19) {
+                    mapContainer.classList.add('map-zoom-high');
+                } else {
+                    mapContainer.classList.remove('map-zoom-high');
+                }
+            });
+        }
+
 
         async function loadData() {
             try {

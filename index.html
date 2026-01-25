@@ -53,6 +53,39 @@
         .species-color { width: 14px; height: 14px; margin-right: 8px; border: 1px solid rgba(0,0,0,0.2); display: inline-block; border-radius: 50%; flex-shrink: 0; }
         
         #speciesFilters { max-height: 250px; overflow-y: auto; border-top: 1px solid #eee; }
+
+        /* Container for the orientation marker */
+        .user-location-parent {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* The Fan Shape (Field of View) */
+        .user-fov-fan {
+            position: absolute;
+            width: 0;
+            height: 0;
+            border-left: 40px solid transparent;
+            border-right: 40px solid transparent;
+            border-top: 80px solid rgba(44, 95, 45, 0.3); /* Match your theme green with transparency */
+            border-radius: 50% 50% 0 0;
+            top: -80px; /* Offset so the point sits on the user dot */
+            transform-origin: bottom center;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .user-location-marker {
+            background: #4a90e2;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 14px;
+            height: 14px;
+            box-shadow: 0 0 5px rgba(0,0,0,0.4);
+            z-index: 2;
+        }
     </style>
 </head>
 <body>
@@ -161,7 +194,7 @@
                 const treeRes = await fetch('map/treei.csv');
                 const treeText = await treeRes.text();
                 
-                const specialRes = await fetch('map/selection.csv');
+                const specialRes = await fetch('asset/selection.csv');
                 if(specialRes.ok) {
                     const specialText = await specialRes.text();
                     Papa.parse(specialText, {
@@ -333,19 +366,64 @@
             `).join('');
         }
 
+        let currentHeading = 0;
+
+        // Request orientation and start listener
+        async function initOrientation() {
+            // Check for iOS 13+ permission requirement
+            if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+                try {
+                    const permission = await DeviceOrientationEvent.requestPermission();
+                    if (permission === 'granted') {
+                        window.addEventListener('deviceorientation', handleOrientation, true);
+                    }
+                } catch (error) {
+                    console.error("Orientation permission denied:", error);
+                }
+            } else {
+                // Non-iOS or older browsers
+                window.addEventListener('deviceorientation', handleOrientation, true);
+            }
+        }
+
+        function handleOrientation(event) {
+            // compass heading (absolute or webkit)
+            currentHeading = event.webkitCompassHeading || (360 - event.alpha);
+            
+            if (userMarker) {
+                const fan = document.querySelector('.user-fov-fan');
+                if (fan) {
+                    fan.style.transform = `rotate(${currentHeading}deg)`;
+                }
+            }
+        }
+
         function geolocate(isManual) {
+            // If user clicks recenter, request orientation permission (Required for iOS)
+            if (isManual) initOrientation();
+
             navigator.geolocation.getCurrentPosition(pos => {
                 const { latitude, longitude } = pos.coords;
-                if(userMarker) map.removeLayer(userMarker);
-                userMarker = L.marker([latitude, longitude], {
-                    icon: L.divIcon({
-                        className: 'u-loc',
-                        html: '<div class="user-location-marker"></div><div class="pulse"></div>',
-                        iconSize: [12, 12]
-                    })
-                }).addTo(map);
-                if(isManual) map.setView([latitude, longitude], 18);
-            });
+                
+                if (userMarker) map.removeLayer(userMarker);
+
+                // Custom HTML for the marker including the Fan and the Dot
+                const userIcon = L.divIcon({
+                    className: 'user-location-parent',
+                    html: `
+                        <div class="user-fov-fan" style="transform: rotate(${currentHeading}deg)"></div>
+                        <div class="user-location-marker"></div>
+                        <div class="pulse"></div>
+                    `,
+                    iconSize: [14, 14]
+                });
+
+                userMarker = L.marker([latitude, longitude], { icon: userIcon, zIndexOffset: 1000 }).addTo(map);
+
+                if (isManual) {
+                    map.setView([latitude, longitude], 19); // Zoom in closer to see specific trees
+                }
+            }, err => console.warn(err), { enableHighAccuracy: true });
         }
 
         function toggleLayerSelector() { document.getElementById('layerSelector').classList.toggle('collapsed'); }
@@ -373,5 +451,4 @@
         window.onload = initMap;
     </script>
 </body>
-
 </html>

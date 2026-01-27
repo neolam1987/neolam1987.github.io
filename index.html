@@ -219,9 +219,8 @@
 
         async function loadData() {
             try {
-                // Direct download link for your Google Drive file
-                const csvUrl = 'https://docs.google.com/uc?export=download&id=1Mdc_727PjN9uM1VLJyrzKfuxttEyeMWL';
-                const treeRes = await fetch(csvUrl);
+                // Fetching from local GitHub repo to avoid CORS
+                const treeRes = await fetch('treei.csv');
                 const treeText = await treeRes.text();
                 
                 const specialRes = await fetch('map/selection.csv');
@@ -240,14 +239,16 @@
                     skipEmptyLines: true,
                     complete: function(results) {
                         treesData = results.data.map(t => ({
-                            ...t, lat: parseFloat(t.y), lng: parseFloat(t.x)
+                            ...t, 
+                            lat: parseFloat(t.y), // Mapped from your CSV 'y'
+                            lng: parseFloat(t.x)  // Mapped from your CSV 'x'
                         })).filter(t => !isNaN(t.lat));
                         
                         setupSpeciesMetadata();
                         renderMarkersChunked(0);
                     }
                 });
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("Load Error:", e); }
         }
 
         
@@ -316,21 +317,21 @@
         }
 
         function showPopup(t) {
-            const name = `${t.Tree_Species_Eng} (${t.Tree_Species_Chi || 'N/A'})`;
+            const name = `${t.Tree_Species_Eng || 'Unknown'} (${t.Tree_Species_Chi || 'N/A'})`;
             const content = `
-                <div style="font-family: sans-serif; line-height: 1.5;">
+                <div style="font-family: sans-serif; line-height: 1.5; min-width: 200px;">
                     <b style="font-size: 14px; color: #2c5f2d;">${name}</b><br>
                     <hr style="margin: 5px 0; border: 0; border-top: 1px solid #eee;">
-                    <b>Source:</b> ${t.Source}<br>
-                    <b>Dept ID:</b> ${t.Department_Tree_ID}<br>
-                    <b>Height:</b> ${t.Height_m} m<br>
-                    <b>DBH:</b> ${t.DBH_mm} mm<br>
-                    <b>Crown Spread:</b> ${t.Crown_Spread_m} m
+                    <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                        <tr><td><b>Source:</b></td><td>${t.Source || 'N/A'}</td></tr>
+                        <tr><td><b>Dept ID:</b></td><td>${t.Department_Tree_ID || 'N/A'}</td></tr>
+                        <tr><td><b>Height:</b></td><td>${t.Height_m || '0'} m</td></tr>
+                        <tr><td><b>DBH:</b></td><td>${t.DBH_mm || '0'} mm</td></tr>
+                        <tr><td><b>Crown:</b></td><td>${t.Crown_Spread_m || '0'} m</td></tr>
+                    </table>
                 </div>
             `;
-            L.popup().setLatLng([t.lat, t.lng])
-                .setContent(content)
-                .openOn(map);
+            L.popup().setLatLng([t.lat, t.lng]).setContent(content).openOn(map);
         }
 
         function filterMarkers() {
@@ -401,10 +402,16 @@
             const val = document.getElementById('idSearchInput').value.toLowerCase();
             const resBox = document.getElementById('searchResults');
             if(val.length < 2) { resBox.innerHTML = ''; return; }
-            const matches = treesData.filter(t => t.fid.toLowerCase().includes(val)).slice(0, 5);
+            
+            // CHANGE: Search 'Department_Tree_ID' instead of 'fid'
+            const matches = treesData.filter(t => 
+                t.Department_Tree_ID && t.Department_Tree_ID.toLowerCase().includes(val)
+            ).slice(0, 10); // Increased slice to 10 for better visibility
+
             resBox.innerHTML = matches.map(t => `
-                <div style="padding:8px; border-bottom:1px solid #eee; cursor:pointer;" onclick="map.setView([${t.lat}, ${t.lng}], 20)">
-                    ID: ${t.fid} - ${t.Tree_Species_Eng} (${t.Tree_Species_Chi})
+                <div style="padding:8px; border-bottom:1px solid #eee; cursor:pointer;" 
+                    onclick="map.setView([${t.lat}, ${t.lng}], 20); showPopup(${JSON.stringify(t).replace(/"/g, '&quot;')})">
+                    ID: ${t.Department_Tree_ID} - ${t.Tree_Species_Eng}
                 </div>
             `).join('');
         }

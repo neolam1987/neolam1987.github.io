@@ -220,7 +220,7 @@
         async function loadData() {
             try {
                 // Fetching from local GitHub repo to avoid CORS
-                const treeRes = await fetch('treei.csv');
+                const treeRes = await fetch('map/treei.csv');
                 const treeText = await treeRes.text();
                 
                 const specialRes = await fetch('map/selection.csv');

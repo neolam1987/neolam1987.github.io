@@ -219,7 +219,9 @@
 
         async function loadData() {
             try {
-                const treeRes = await fetch('map/treei.csv');
+                // Direct download link for your Google Drive file
+                const csvUrl = 'https://docs.google.com/uc?export=download&id=1Mdc_727PjN9uM1VLJyrzKfuxttEyeMWL';
+                const treeRes = await fetch(csvUrl);
                 const treeText = await treeRes.text();
                 
                 const specialRes = await fetch('map/selection.csv');
@@ -248,12 +250,14 @@
             } catch (e) { console.error(e); }
         }
 
+        
         function setupSpeciesMetadata() {
             const speciesSet = new Set();
             treesData.forEach(t => {
-                speciesSet.add(t.botanical_name);
-                // Store Chinese name mapped to Botanical name for easy lookup
-                speciesChineseNames[t.botanical_name] = t.chinese_name || "Unknown";
+                // Use the new column names from your CSV
+                const engName = t.Tree_Species_Eng || "Unknown Species";
+                speciesSet.add(engName);
+                speciesChineseNames[engName] = t.Tree_Species_Chi || "N/A";
             });
 
             const colors = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6'];
@@ -276,7 +280,7 @@
                 const marker = L.marker([t.lat, t.lng], {
                     icon: L.divIcon({
                         className: 'tree-marker',
-                        html: `<div class="species-color" style="background:${speciesColors[t.botanical_name]}"></div>`,
+                        html: `<div class="species-color" style="background:${speciesColors[t.Tree_Species_Eng]}"></div>`,
                         iconSize: [14, 14]
                     })
                 });
@@ -312,9 +316,20 @@
         }
 
         function showPopup(t) {
-            const name = `${t.botanical_name} (${t.chinese_name})`;
+            const name = `${t.Tree_Species_Eng} (${t.Tree_Species_Chi || 'N/A'})`;
+            const content = `
+                <div style="font-family: sans-serif; line-height: 1.5;">
+                    <b style="font-size: 14px; color: #2c5f2d;">${name}</b><br>
+                    <hr style="margin: 5px 0; border: 0; border-top: 1px solid #eee;">
+                    <b>Source:</b> ${t.Source}<br>
+                    <b>Dept ID:</b> ${t.Department_Tree_ID}<br>
+                    <b>Height:</b> ${t.Height_m} m<br>
+                    <b>DBH:</b> ${t.DBH_mm} mm<br>
+                    <b>Crown Spread:</b> ${t.Crown_Spread_m} m
+                </div>
+            `;
             L.popup().setLatLng([t.lat, t.lng])
-                .setContent(`<b>${name}</b><br>ID: ${t.fid}<br>Height: ${t['Tree Height'] || 'N/A'}`)
+                .setContent(content)
                 .openOn(map);
         }
 
@@ -322,11 +337,11 @@
             clusterGroup.clearLayers();
             const activeSpecies = Array.from(document.querySelectorAll('#speciesFilters input:checked')).map(cb => cb.getAttribute('data-sp'));
             
-            treesData.filter(t => activeSpecies.includes(t.botanical_name)).forEach(t => {
+            treesData.filter(t => activeSpecies.includes(t.Tree_Species_Eng)).forEach(t => {
                 const marker = L.marker([t.lat, t.lng], {
                     icon: L.divIcon({
                         className: 'tree-marker',
-                        html: `<div class="species-color" style="background:${speciesColors[t.botanical_name]}"></div>`,
+                        html: `<div class="species-color" style="background:${speciesColors[t.Tree_Species_Eng]}"></div>`,
                         iconSize: [14, 14]
                     })
                 });
@@ -389,7 +404,7 @@
             const matches = treesData.filter(t => t.fid.toLowerCase().includes(val)).slice(0, 5);
             resBox.innerHTML = matches.map(t => `
                 <div style="padding:8px; border-bottom:1px solid #eee; cursor:pointer;" onclick="map.setView([${t.lat}, ${t.lng}], 20)">
-                    ID: ${t.fid} - ${t.botanical_name} (${t.chinese_name})
+                    ID: ${t.fid} - ${t.Tree_Species_Eng} (${t.Tree_Species_Chi})
                 </div>
             `).join('');
         }

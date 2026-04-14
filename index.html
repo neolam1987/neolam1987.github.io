@@ -45,54 +45,32 @@
         .btn { padding: 8px; border: none; border-radius: 4px; cursor: pointer; font-size: 12px; transition: 0.2s; text-align: center; text-decoration: none; display: inline-block; }
         .btn-primary { background: #2c5f2d; color: white; }
         .btn-secondary { background: #6c757d; color: white; }
-        .btn-special { background: #d4af37; color: white; font-weight: bold; grid-column: span 2; }
-        .btn-add { background: #4a90e2; color: white; font-weight: bold; grid-column: span 2; margin-top: 5px; }
 
         /* Filter Row Styles */
         .filter-option { display: flex; align-items: center; padding: 6px 0; font-size: 13px; border-bottom: 1px solid #f9f9f9; }
-        .species-color { width: 14px; height: 14px; margin-right: 8px; border: 1px solid rgba(0,0,0,0.2); display: inline-block; border-radius: 50%; flex-shrink: 0; }
         
         #speciesFilters { max-height: 250px; overflow-y: auto; border-top: 1px solid #eee; }
 
         /* Container for the orientation marker */
-        .user-location-parent {
-            position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
+        .user-location-parent { position: relative; display: flex; align-items: center; justify-content: center; }
 
         /* The Fan Shape (Field of View) */
-        /* Hide the fan by default */
         .user-fov-fan {
-            display: none;
-            position: absolute;
-            width: 0;
-            height: 0;
-            border-left: 40px solid transparent;
-            border-right: 40px solid transparent;
+            display: none; position: absolute; width: 0; height: 0;
+            border-left: 40px solid transparent; border-right: 40px solid transparent;
             border-top: 80px solid rgba(44, 95, 45, 0.4); 
-            border-radius: 50% 50% 0 0;
-            top: -80px;
-            transform-origin: bottom center;
-            pointer-events: none;
-            z-index: -1;
+            border-radius: 50% 50% 0 0; top: -80px; transform-origin: bottom center;
+            pointer-events: none; z-index: -1;
         }
 
-        /* Only display fan when map-zoom-high class is present */
-        .map-zoom-high .user-fov-fan {
-            display: block;
-        }
-
-        .user-location-marker {
-            background: #4a90e2;
-            border: 2px solid white;
-            border-radius: 50%;
-            width: 14px;
-            height: 14px;
-            box-shadow: 0 0 5px rgba(0,0,0,0.4);
-            z-index: 2;
-        }
+        .map-zoom-high .user-fov-fan { display: block; }
+        .user-location-marker { background: #4a90e2; border: 2px solid white; border-radius: 50%; width: 14px; height: 14px; box-shadow: 0 0 5px rgba(0,0,0,0.4); z-index: 2; }
+        
+        /* Popup Customization */
+        .leaflet-popup-content-wrapper { border-radius: 8px; }
+        .leaflet-popup-content { margin: 15px; }
+        .popup-table td { padding: 3px 5px 3px 0; vertical-align: top; border-bottom: 1px solid #f0f0f0; }
+        .popup-table tr:last-child td { border-bottom: none; }
     </style>
 </head>
 <body>
@@ -130,21 +108,21 @@
             </div>
 
             <div id="filtersTab" class="tab-content active">
+                <div style="font-size: 12px; padding: 10px; background: #f9f9f9; border-radius: 4px; margin-bottom: 10px;">
+                    <b>Map Legend:</b><br>
+                    <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#28a745; margin-right:5px;"></span> Has TMO or LCSD Tag<br>
+                    <span style="display:inline-block; width:10px; height:10px; border-radius:50%; background:#dc3545; margin-right:5px; margin-top:5px;"></span> No Tag
+                </div>
+
                 <div class="action-buttons">
                     <button class="btn btn-secondary" onclick="setAllSpecies(true)">Select All</button>
                     <button class="btn btn-secondary" onclick="setAllSpecies(false)">Unselect All</button>
-                    <button class="btn btn-special" onclick="selectSpecialSpecies()">
-                        <i class="fas fa-star"></i> Select Special (Selection.csv)
-                    </button>
-                    <a href="map/addtree.html" class="btn btn-add">
-                        <i class="fas fa-plus-circle"></i> Add Tree
-                    </a>
                 </div>
 
                 <div class="search-box">
-                    <input type="text" id="speciesSearchInput" list="speciesList" placeholder="Find species to add...">
+                    <input type="text" id="speciesSearchInput" list="speciesList" placeholder="Find botanical name...">
                     <datalist id="speciesList"></datalist>
-                    <button class="btn btn-primary" onclick="addSpecificSpecies()">Add</button>
+                    <button class="btn btn-primary" onclick="addSpecificSpecies()">Find</button>
                 </div>
 
                 <div id="speciesFilters"></div>
@@ -152,7 +130,7 @@
 
             <div id="searchTab" class="tab-content">
                 <div class="search-box">
-                    <input type="text" id="idSearchInput" placeholder="Enter Tree ID (fid)..." oninput="searchByID()">
+                    <input type="text" id="idSearchInput" placeholder="Enter fid or Tag ID..." oninput="searchByID()">
                 </div>
                 <div id="searchResults" style="max-height: 200px; overflow-y: auto;"></div>
             </div>
@@ -166,20 +144,20 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
     <script>
-        let map, clusterGroup, treesData = [], specialSpeciesList = [];
-        let speciesColors = {}, speciesChineseNames = {};
+        let map, clusterGroup, treesData = [];
+        let speciesChineseNames = {};
         let userMarker = null;
         const CHUNK_SIZE = 5000;
 
         // --- Lands Department API Config ---
         const landsdBasemapUrl = 'https://mapapi.geodata.gov.hk/gs/api/v1.0.0/xyz/basemap/WGS84/{z}/{x}/{y}.png';
-        const landsdLabelUrl = 'https://mapapi.geodata.gov.hk/gs/api/v1.0.0/xyz/label/hk/en/WGS84/{z}/{x}/{y}.png'; // English Labels
+        const landsdLabelUrl = 'https://mapapi.geodata.gov.hk/gs/api/v1.0.0/xyz/label/hk/en/WGS84/{z}/{x}/{y}.png'; 
         const landsdAttribution = 'Map &copy; <a href="https://www.landsd.gov.hk/">Lands Department</a>';
 
         const baseLayers = {
             landsD: L.layerGroup([
                 L.tileLayer(landsdBasemapUrl, { maxZoom: 20, attribution: landsdAttribution }),
-                L.tileLayer(landsdLabelUrl, { maxZoom: 20, zIndex: 10 }) // Separate labels layer
+                L.tileLayer(landsdLabelUrl, { maxZoom: 20, zIndex: 10 }) 
             ]),
             osm: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { 
                 maxZoom: 19, attribution: '&copy; OpenStreetMap' 
@@ -189,12 +167,10 @@
             })
         };
         
-        // MODIFIED PART: Added missing setupZoomListener function
         function setupZoomListener() {
             map.on('zoomend', () => {
                 const zoom = map.getZoom();
                 const mapContainer = document.getElementById('map');
-                // Show the orientation fan only at zoom level 19 or higher
                 if (zoom >= 19) {
                     mapContainer.classList.add('map-zoom-high');
                 } else {
@@ -208,31 +184,16 @@
             baseLayers.landsD.addTo(map);
             clusterGroup = L.markerClusterGroup({ disableClusteringAtZoom: 19 }).addTo(map);
             
-            setupZoomListener(); // Now defined, this will no longer crash
+            setupZoomListener(); 
             initOrientation();   
             loadData();
         }
 
-
-        
-
-
         async function loadData() {
             try {
-                // Fetching from local GitHub repo to avoid CORS
-                const treeRes = await fetch('map/treei.csv');
+                const gasUrl = 'https://script.google.com/macros/s/AKfycbxEWJpBvkHEFM6cz-0Uewf1XwC788CwulUz9ppYRikP9-mjlVTqtMM8wPFT6hY1qvny/exec';
+                const treeRes = await fetch(gasUrl);
                 const treeText = await treeRes.text();
-                
-                const specialRes = await fetch('map/selection.csv');
-                if(specialRes.ok) {
-                    const specialText = await specialRes.text();
-                    Papa.parse(specialText, {
-                        header: true,
-                        complete: (results) => {
-                            specialSpeciesList = results.data.map(r => Object.values(r)[0]?.trim());
-                        }
-                    });
-                }
 
                 Papa.parse(treeText, {
                     header: true,
@@ -240,33 +201,32 @@
                     complete: function(results) {
                         treesData = results.data.map(t => ({
                             ...t, 
-                            lat: parseFloat(t.y), // Mapped from your CSV 'y'
-                            lng: parseFloat(t.x)  // Mapped from your CSV 'x'
+                            lat: parseFloat(t.y), 
+                            lng: parseFloat(t.x)  
                         })).filter(t => !isNaN(t.lat));
                         
                         setupSpeciesMetadata();
                         renderMarkersChunked(0);
                     }
                 });
-            } catch (e) { console.error("Load Error:", e); }
+            } catch (e) { 
+                console.error("Load Error:", e);
+                document.getElementById('loading').innerHTML = "Error loading tree data. Please check the console."; 
+            }
         }
 
-        
         function setupSpeciesMetadata() {
             const speciesSet = new Set();
             treesData.forEach(t => {
-                // Use the new column names from your CSV
-                const engName = t.Tree_Species_Eng || "Unknown Species";
+                const engName = t.botanical_name || "Unknown Species";
                 speciesSet.add(engName);
-                speciesChineseNames[engName] = t.Tree_Species_Chi || "N/A";
+                speciesChineseNames[engName] = t.chinese_name || "N/A";
             });
 
-            const colors = ['#e6194b', '#3cb44b', '#ffe119', '#4363d8', '#f58231', '#911eb4', '#46f0f0', '#f032e6'];
             const datalist = document.getElementById('speciesList');
             const sortedSpecies = Array.from(speciesSet).sort();
             
-            sortedSpecies.forEach((sp, i) => {
-                speciesColors[sp] = colors[i % colors.length];
+            sortedSpecies.forEach(sp => {
                 const opt = document.createElement('option');
                 opt.value = sp;
                 datalist.appendChild(opt);
@@ -274,20 +234,33 @@
             updateSpeciesUI(sortedSpecies);
         }
 
+        function getMarkerColor(t) {
+            // Check for presence of TMO or LCSD tags
+            const tmo = t['TMO TAG ID'] || t['TMO TAG']; // Handling potential column name variations
+            const lcsd = t['LCSD TAG ID'] || t['LCSD TAG'];
+            
+            const hasTag = (tmo && tmo.toString().trim() !== '') || (lcsd && lcsd.toString().trim() !== '');
+            return hasTag ? '#28a745' : '#dc3545'; // Green if tagged, Red otherwise
+        }
+
+        function createTreeMarker(t) {
+            const dotColor = getMarkerColor(t);
+            const marker = L.marker([t.lat, t.lng], {
+                icon: L.divIcon({
+                    className: 'tree-marker',
+                    html: `<div style="width:14px; height:14px; border-radius:50%; border:1px solid rgba(0,0,0,0.4); background:${dotColor};"></div>`,
+                    iconSize: [14, 14]
+                })
+            });
+            marker.treeData = t;
+            marker.on('click', () => showPopup(t));
+            return marker;
+        }
+
         function renderMarkersChunked(index) {
             const end = Math.min(index + CHUNK_SIZE, treesData.length);
             for (let i = index; i < end; i++) {
-                const t = treesData[i];
-                const marker = L.marker([t.lat, t.lng], {
-                    icon: L.divIcon({
-                        className: 'tree-marker',
-                        html: `<div class="species-color" style="background:${speciesColors[t.Tree_Species_Eng]}"></div>`,
-                        iconSize: [14, 14]
-                    })
-                });
-                marker.treeData = t;
-                marker.on('click', () => showPopup(t));
-                clusterGroup.addLayer(marker);
+                clusterGroup.addLayer(createTreeMarker(treesData[i]));
             }
 
             if (end < treesData.length) {
@@ -299,7 +272,6 @@
             }
         }
 
-        // MODIFIED PART: Label shows both, but data-sp and ID remain tied to Botanical name
         function updateSpeciesUI(sortedSpecies) {
             const container = document.getElementById('speciesFilters');
             container.innerHTML = sortedSpecies.map(sp => {
@@ -307,8 +279,7 @@
                 return `
                     <div class="filter-option">
                         <input type="checkbox" id="cb_${safeId}" data-sp="${sp}" checked onchange="filterMarkers()">
-                        <label for="cb_${safeId}" style="cursor:pointer; display:flex; align-items:center; width: 100%;">
-                            <span class="species-color" style="background:${speciesColors[sp]}"></span>
+                        <label for="cb_${safeId}" style="cursor:pointer; display:flex; align-items:center; width: 100%; margin-left: 8px;">
                             ${sp} (${speciesChineseNames[sp]})
                         </label>
                     </div>
@@ -317,17 +288,29 @@
         }
 
         function showPopup(t) {
-            const name = `${t.Tree_Species_Eng || 'Unknown'} (${t.Tree_Species_Chi || 'N/A'})`;
+            const title = `${t.botanical_name || 'Unknown Botanical Name'} (${t.chinese_name || 'N/A'})`;
+            
+            // Dynamically generate table rows for all columns
+            let tableRows = '';
+            const excludeKeys = ['lat', 'lng']; // Exclude the coordinates we generated for mapping
+            
+            for (const [key, value] of Object.entries(t)) {
+                if (!excludeKeys.includes(key) && value !== undefined && value !== '') {
+                    tableRows += `<tr><td><b>${key}:</b></td><td>${value}</td></tr>`;
+                }
+            }
+
             const content = `
-                <div style="font-family: sans-serif; line-height: 1.5; min-width: 200px;">
-                    <b style="font-size: 14px; color: #2c5f2d;">${name}</b><br>
+                <div style="font-family: sans-serif; line-height: 1.5; min-width: 250px; max-width: 300px; max-height: 300px; overflow-y: auto;">
+                    <b style="font-size: 14px; color: #2c5f2d; display: block; margin-bottom: 5px;">${title}</b>
+                    <div style="margin-bottom: 8px;">
+                        <span style="display:inline-block; padding: 2px 6px; font-size: 10px; border-radius: 4px; color: white; background: ${getMarkerColor(t)};">
+                            ${getMarkerColor(t) === '#28a745' ? 'Tagged Tree' : 'Untagged Tree'}
+                        </span>
+                    </div>
                     <hr style="margin: 5px 0; border: 0; border-top: 1px solid #eee;">
-                    <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
-                        <tr><td><b>Source:</b></td><td>${t.Source || 'N/A'}</td></tr>
-                        <tr><td><b>Dept ID:</b></td><td>${t.Department_Tree_ID || 'N/A'}</td></tr>
-                        <tr><td><b>Height:</b></td><td>${t.Height_m || '0'} m</td></tr>
-                        <tr><td><b>DBH:</b></td><td>${t.DBH_mm || '0'} mm</td></tr>
-                        <tr><td><b>Crown:</b></td><td>${t.Crown_Spread_m || '0'} m</td></tr>
+                    <table class="popup-table" style="width: 100%; font-size: 12px; border-collapse: collapse;">
+                        ${tableRows}
                     </table>
                 </div>
             `;
@@ -338,50 +321,14 @@
             clusterGroup.clearLayers();
             const activeSpecies = Array.from(document.querySelectorAll('#speciesFilters input:checked')).map(cb => cb.getAttribute('data-sp'));
             
-            treesData.filter(t => activeSpecies.includes(t.Tree_Species_Eng)).forEach(t => {
-                const marker = L.marker([t.lat, t.lng], {
-                    icon: L.divIcon({
-                        className: 'tree-marker',
-                        html: `<div class="species-color" style="background:${speciesColors[t.Tree_Species_Eng]}"></div>`,
-                        iconSize: [14, 14]
-                    })
-                });
-                marker.treeData = t;
-                marker.on('click', () => showPopup(t));
-                clusterGroup.addLayer(marker);
+            treesData.filter(t => activeSpecies.includes(t.botanical_name || "Unknown Species")).forEach(t => {
+                clusterGroup.addLayer(createTreeMarker(t));
             });
         }
 
         function setAllSpecies(checked) {
             document.querySelectorAll('#speciesFilters input').forEach(cb => cb.checked = checked);
             filterMarkers();
-        }
-
-        // MODIFIED PART: Fixed Special Select to match Botanical names correctly
-        function selectSpecialSpecies() {
-            // 1. Uncheck everything first
-            document.querySelectorAll('#speciesFilters input').forEach(cb => cb.checked = false);
-            
-            let matchFound = false;
-
-            // 2. Loop through the special list from selection.csv
-            specialSpeciesList.forEach(spName => {
-                // Generate the same safe ID used in the UI generation
-                const safeId = spName.replace(/[^a-z0-9]/gi, '_');
-                const cb = document.getElementById(`cb_${safeId}`);
-                
-                if (cb) {
-                    cb.checked = true;
-                    matchFound = true;
-                }
-            });
-
-            // 3. Refresh markers and notify user if no matches
-            filterMarkers();
-            
-            if (!matchFound) {
-                alert("No matches found. Check if selection.csv names match botanical_name in treei.csv exactly.");
-            }
         }
 
         function addSpecificSpecies() {
@@ -394,7 +341,7 @@
                 filterMarkers();
                 input.value = '';
             } else {
-                alert("Species not found.");
+                alert("Botanical name not found in the current dataset.");
             }
         }
 
@@ -403,26 +350,31 @@
             const resBox = document.getElementById('searchResults');
             if(val.length < 2) { resBox.innerHTML = ''; return; }
             
-            // CHANGE: Search 'Department_Tree_ID' instead of 'fid'
-            const matches = treesData.filter(t => 
-                t.Department_Tree_ID && t.Department_Tree_ID.toLowerCase().includes(val)
-            ).slice(0, 10); // Increased slice to 10 for better visibility
+            // Search across multiple ID fields
+            const matches = treesData.filter(t => {
+                const fidMatch = t.fid && t.fid.toString().toLowerCase().includes(val);
+                const tmoMatch = t['TMO TAG ID'] && t['TMO TAG ID'].toString().toLowerCase().includes(val);
+                const lcsdMatch = t['LCSD TAG'] && t['LCSD TAG'].toString().toLowerCase().includes(val);
+                return fidMatch || tmoMatch || lcsdMatch;
+            }).slice(0, 15); 
 
-            resBox.innerHTML = matches.map(t => `
-                <div style="padding:8px; border-bottom:1px solid #eee; cursor:pointer;" 
-                    onclick="map.setView([${t.lat}, ${t.lng}], 20); showPopup(${JSON.stringify(t).replace(/"/g, '&quot;')})">
-                    ID: ${t.Department_Tree_ID} - ${t.Tree_Species_Eng}
-                </div>
-            `).join('');
+            resBox.innerHTML = matches.map(t => {
+                const mainId = t['TMO TAG ID'] || t['LCSD TAG'] || t.fid || 'Unknown ID';
+                return `
+                    <div style="padding:8px; border-bottom:1px solid #eee; cursor:pointer;" 
+                        onclick="map.setView([${t.lat}, ${t.lng}], 20); showPopup(${JSON.stringify(t).replace(/"/g, '&quot;')})">
+                        <b>ID: ${mainId}</b><br>
+                        <span style="font-size: 11px; color: #666;">${t.botanical_name || 'Unknown Species'}</span>
+                    </div>
+                `;
+            }).join('');
         }
 
         let currentHeading = 0;
 
-        // Initialize orientation automatically on load
         async function initOrientation() {
             if (typeof DeviceOrientationEvent !== 'undefined' && 
                 typeof DeviceOrientationEvent.requestPermission === 'function') {
-                // iOS requires a click, so we'll try to catch it on the first map click
                 document.body.addEventListener('click', async () => {
                     try {
                         const permission = await DeviceOrientationEvent.requestPermission();
@@ -432,7 +384,6 @@
                     } catch (e) { console.error("Orientation error:", e); }
                 }, { once: true });
             } else {
-                // Android and others
                 window.addEventListener('deviceorientation', handleOrientation, true);
             }
         }
@@ -479,7 +430,7 @@
             event.currentTarget.classList.add('active');
         }
         function updateStats() {
-            const spCount = Object.keys(speciesColors).length;
+            const spCount = Object.keys(speciesChineseNames).length;
             document.getElementById('statsGrid').innerHTML = `<div style="text-align:center; padding:10px; background:#f0f0f0; border-radius:5px;">
                 <h2 style="color:#2c5f2d">${treesData.length}</h2><p style="font-size:12px;">Total Trees</p>
                 <h2 style="color:#2c5f2d; margin-top:10px;">${spCount}</h2><p style="font-size:12px;">Species Types</p></div>`;
@@ -488,6 +439,4 @@
         window.onload = initMap;
     </script>
 </body>
-
 </html>
-
